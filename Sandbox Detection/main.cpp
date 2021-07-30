@@ -10,7 +10,9 @@
 std::vector<std::string> blacklisted_modules =
 {
 	XOR("snxhk.dll"), /* Avast Sandbox's module name */
-	XOR("SbieDll.dll") /* Sandboxie's module name */
+	XOR("SbieDll.dll"), /* Sandboxie's module name */
+	XOR("cmdvrt32.dll"), /* Comodo Sandbox's module name */
+	XOR("SxIn.dll") /* Qihoo360 Sandbox's module name  */
 };
 
 std::map<std::string, HMODULE> modules_map;
