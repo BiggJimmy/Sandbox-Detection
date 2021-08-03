@@ -5,17 +5,29 @@
 #include <vector>
 #include <map>
 
-#include "encryption.h"
-
 std::vector<std::string> blacklisted_modules =
 {
-	XOR("snxhk.dll"), /* Avast Sandbox's module name */
-	XOR("SbieDll.dll"), /* Sandboxie's module name */
-	XOR("cmdvrt32.dll"), /* Comodo Sandbox's module name */
-	XOR("SxIn.dll") /* Qihoo360 Sandbox's module name  */
+	"snxhk.dll", /* Avast Sandbox's module name */
+	"SbieDll.dll", /* Sandboxie's module name */
+	"cmdvrt32.dll", /* Comodo Sandbox's module name */
+	"SxIn.dll" /* Qihoo360 Sandbox's module name  */
 };
 
 std::map<std::string, HMODULE> modules_map;
+std::map<std::string, HMODULE>::iterator iterator;
+
+/* unloads a module from memory */
+void unload_module(std::pair<std::string, HMODULE> module)
+{
+	/* find the blacklisted module */
+	iterator = modules_map.find(module.first);
+
+	/* remove the blacklisted module from the map */
+	modules_map.erase(iterator);
+
+	/* unload the module from memory */
+	FreeLibraryAndExitThread(module.second, 1);
+}
 
 /* create a map of all the loaded modules in the current process */
 void create_modules_map()
@@ -49,43 +61,44 @@ void create_modules_map()
 }
 
 /* parse the loaded modules and check if they are blacklisted */
-int detect_environment()
+bool detect_environment()
 {
+	/* set exit status to success */
+	bool success = true;
+
+	/* iterate through process modules */
 	for (auto module : modules_map)
 	{
 		/* iterate through blacklisted modules */
 		for (auto blm : blacklisted_modules)
 		{
-			/* decrypt the name of the blacklisted module */
-			std::string bl_module_name = XOR(blm);
-
 			/* check if the module is blacklisted */
-			if (bl_module_name == module.first)
+			if (blm == module.first)
 			{
+				/* print some stuff in the console */
 				std::cout << "[-] blacklisted module detected!" << std::endl << "\tName : " << module.first << " (0x" << std::hex << module.second << ')' << std::endl;
 
-				/* return exit failure */
-				return 1;
+				/* attempt to unload the module */
+				unload_module(module);
+
+				/* set exit status to failure */
+				success = false;
 			}
 		}
 	}
 
-	/* return exit success */
-	return 0;
+	/* return exit status */
+	return success;
 }
 
 int main()
 {
+	/* create a map of all the loaded modules */
 	create_modules_map();
 
-	/* check if process is sandboxed */
-	if (detect_environment() == 1)
-	{
-		std::cout << "[-] sandbox detected!" << std::endl;
-		Sleep(5000);
-
+	/* check for blacklisted modules */
+	if (!detect_environment())
 		return 1;
-	}
 
 	std::cout << "Hello World!" << std::endl;
 	Sleep(5000);
